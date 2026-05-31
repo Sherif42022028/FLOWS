@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>صمم تيشيرتك — FLOW</title>
+  <meta name="description" content="صمم تيشيرتك المخصص - أضف صورتك أو نصك واختر اللون والمقاس"/>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230A0A0A'/><text x='16' y='23' text-anchor='middle' font-family='sans-serif' font-weight='bold' font-size='18' fill='%23D4AF37'>F</text></svg>"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+  <style>
+    .designer-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5rem;
+      align-items: start;
+      padding: 2rem 0 5rem;
+    }
+
+    /* ── Canvas / Preview ─────────────────────────────────── */
+    .canvas-wrapper {
+      position: sticky;
+      top: 90px;
+    }
+    .tshirt-preview-card {
+      background: var(--black-card);
+      border: 1px solid var(--black-border);
+      border-radius: 24px;
+      overflow: hidden;
+      padding: 1rem;
+      text-align: center;
+      position: relative;
+      height: 500px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .tshirt-3d-model {
+      width: 100%;
+      height: 400px;
+      --poster-color: transparent;
+      outline: none;
+    }
+    .tshirt-design-overlay {
+      position: absolute;
+      top: 28%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 45%;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      pointer-events: none;
+    }
+    .design-text-preview {
+      font-weight: 700;
+      line-height: 1.3;
+      text-align: center;
+      word-break: break-word;
+      color: #ffffff;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+      transition: var(--transition);
+    }
+    .design-img-preview {
+      max-width: 100%;
+      max-height: 80px;
+      object-fit: contain;
+      border-radius: 4px;
+    }
+    .canvas-controls {
+      display: flex; justify-content: center; gap: 0.75rem;
+      margin-top: 1.25rem;
+    }
+    .view-toggle-btn {
+      padding: 0.45rem 1rem;
+      border: 1px solid var(--black-border);
+      border-radius: var(--radius-pill);
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.8125rem;
+      font-family: 'Cairo', sans-serif;
+      transition: var(--transition);
+    }
+    .view-toggle-btn.active { border-color: var(--gold-primary); color: var(--gold-primary); background: rgba(212,175,55,0.08); }
+
+    /* ── Design Panel ──────────────────────────────────────── */
+    .design-panel { display: flex; flex-direction: column; gap: 1.25rem; }
+    .panel-card {
+      background: var(--black-card);
+      border: 1px solid var(--black-border);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+    }
+    .panel-card-header {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 1.125rem 1.5rem;
+      border-bottom: 1px solid var(--black-border);
+      cursor: pointer;
+      user-select: none;
+      transition: var(--transition);
+    }
+    .panel-card-header:hover { background: rgba(255,255,255,0.02); }
+    .panel-icon {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      background: rgba(212,175,55,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .panel-title { font-weight: 600; font-size: 0.9375rem; flex: 1; }
+    .panel-chevron {
+      color: var(--text-muted);
+      transition: transform 0.3s ease;
+      font-size: 0.75rem;
+    }
+    .panel-card.open .panel-chevron { transform: rotate(90deg); }
+    .panel-body { padding: 1.25rem 1.5rem; }
+    .panel-card:not(.open) .panel-body { display: none; }
+
+    /* Upload Zone */
+    .upload-zone {
+      border: 2px dashed var(--black-border);
+      border-radius: var(--radius-card);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition);
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--gold-primary);
+      background: rgba(212,175,55,0.04);
+    }
+    .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .upload-text { font-weight: 600; margin-bottom: 0.3rem; }
+    .upload-hint { font-size: 0.8125rem; color: var(--text-muted); }
+    .upload-preview {
+      margin-top: 1.25rem;
+      display: none;
+      flex-direction: column; gap: 0.75rem; align-items: center;
+    }
+    .upload-preview img { max-height: 120px; border-radius: 8px; border: 1px solid var(--black-border); }
+    .upload-preview.show { display: flex; }
+
+    /* Text Editor */
+    .text-editor-grid { display: flex; flex-direction: column; gap: 1rem; }
+    .font-family-select {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;
+    }
+    .font-choice {
+      padding: 0.5rem;
+      border: 1px solid var(--black-border);
+      border-radius: 6px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.8125rem;
+      transition: var(--transition);
+      background: transparent;
+      color: var(--text-secondary);
+    }
+    .font-choice:hover { border-color: rgba(212,175,55,0.3); color: var(--text-primary); }
+    .font-choice.active { border-color: var(--gold-primary); color: var(--gold-primary); background: rgba(212,175,55,0.06); }
+    .text-colors { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .text-color-swatch {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .text-color-swatch.active { border-color: var(--gold-primary); transform: scale(1.15); }
+    .text-size-slider { width: 100%; }
+    .text-align-btns { display: flex; gap: 0.4rem; }
+    .align-btn {
+      padding: 0.4rem 0.75rem;
+      border: 1px solid var(--black-border);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: var(--transition);
+    }
+    .align-btn.active { border-color: var(--gold-primary); color: var(--gold-primary); background: rgba(212,175,55,0.08); }
+
+    /* Color Picker */
+    .tshirt-colors { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .tshirt-color-btn {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: var(--transition);
+      outline: 2px solid transparent;
+      outline-offset: 3px;
+      position: relative;
+    }
+    .tshirt-color-btn:hover { transform: scale(1.1); }
+    .tshirt-color-btn.active { outline: 2px solid var(--gold-primary); }
+    .tshirt-color-btn .color-name {
+      position: absolute; bottom: -20px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.6rem; white-space: nowrap;
+      color: var(--text-muted);
+      display: none;
+    }
+    .tshirt-color-btn:hover .color-name { display: block; }
+
+    /* Size Selector */
+    .size-grid-custom { display: grid; grid-template-columns: repeat(6,1fr); gap: 0.5rem; }
+    .size-btn {
+      padding: 0.6rem 0;
+      border: 1.5px solid var(--black-border);
+      border-radius: 8px;
+      background: var(--black-elevated);
+      color: var(--text-secondary);
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-align: center;
+      transition: var(--transition);
+    }
+    .size-btn:hover { border-color: rgba(212,175,55,0.3); color: var(--text-primary); }
+    .size-btn.active { border-color: var(--gold-primary); color: var(--gold-primary); background: rgba(212,175,55,0.08); }
+
+    /* Qty & Order */
+    .order-controls { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+    .qty-stepper { display: flex; align-items: center; border: 1.5px solid var(--black-border); border-radius: 10px; overflow: hidden; }
+    .qty-stepper button { width: 40px; height: 46px; background: var(--black-elevated); border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.2rem; transition: var(--transition); }
+    .qty-stepper button:hover { color: var(--gold-primary); background: rgba(212,175,55,0.06); }
+    .qty-stepper .val { padding: 0 1rem; font-family:'Inter',sans-serif; font-weight:700; }
+    .price-display { font-family:'Inter',sans-serif; font-size:1.5rem; font-weight:700; color:var(--gold-primary); }
+    .price-display .per { font-size:.8rem; color:var(--text-muted); }
+
+    /* Steps Quick View */
+    .steps-bar {
+      display: flex; gap: 0;
+      background: var(--black-elevated);
+      border-radius: var(--radius-card);
+      padding: 0.25rem;
+      margin-bottom: 1rem;
+      overflow-x: auto;
+    }
+    .step-pill {
+      flex: 1; padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .step-pill.active { background: var(--black-card); color: var(--gold-primary); }
+
+    @media(max-width:900px){
+      .designer-layout { grid-template-columns: 1fr; }
+      .canvas-wrapper { position: static; }
+      .tshirt-container { width: 220px; }
+      .size-grid-custom { grid-template-columns: repeat(4,1fr); }
+    }
+    @media(max-width:480px){
+      .size-grid-custom { grid-template-columns: repeat(3,1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header scrolled" id="site-header">
+  <nav class="nav-inner">
+    <a href="index.html" class="logo"><span>FLOW</span></a>
+    <ul class="nav-links">
+      <li><a href="index.html">الرئيسية</a></li>
+      <li><a href="shop.html">المتجر</a></li>
+      <li><a href="custom-tshirt.html" class="active">تيشيرت مخصص</a></li>
+      <li><a href="downloads.html">تنزيل الفاتورة</a></li>
+    </ul>
+    <div class="nav-actions">
+      <button class="nav-icon-btn" onclick="openCart()" id="cart-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span class="cart-count" id="cart-count">0</span>
+      </button>
+      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+</header>
+<div class="mobile-menu" id="mobile-menu">
+  <a href="index.html">الرئيسية</a><a href="shop.html">المتجر</a><a href="custom-tshirt.html">تيشيرت مخصص</a><a href="downloads.html">تنزيل الفاتورة</a>
+</div>
+
+<!-- Page Hero -->
+<div class="page-hero">
+  <div class="container">
+    <div class="breadcrumb" style="justify-content:center;margin-bottom:1rem">
+      <a href="index.html">الرئيسية</a><span class="sep">/</span><span class="current">تيشيرت مخصص</span>
+    </div>
+    <h1 class="text-h1 anim-fade-up">صمّم <span class="gradient-text">تيشيرتك الخاص</span></h1>
+    <p class="text-secondary anim-fade-up-1" style="margin-top:.75rem">ارفع صورتك، أضف نصك، اختر لونك — واحنا نطبعه بجودة فائقة 🔥</p>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Steps Bar -->
+  <div class="steps-bar" style="max-width:560px;margin:0 auto 2rem">
+    <div class="step-pill active" id="step1">① اللون</div>
+    <div class="step-pill" id="step2">② الصورة</div>
+    <div class="step-pill" id="step3">③ النص</div>
+    <div class="step-pill" id="step4">④ المقاس</div>
+    <div class="step-pill" id="step5">⑤ الطلب</div>
+  </div>
+
+  <div class="designer-layout">
+    <!-- Preview Canvas -->
+    <div class="canvas-wrapper">
+      <div class="tshirt-preview-card">
+        <div style="position:absolute;top:1rem;right:1rem">
+          <span class="badge badge-gold">معاينة حية</span>
+        </div>
+        <div style="color:var(--text-muted);font-size:.8125rem;margin-bottom:0.5rem">حرّك التيشرت للمعاينة الثلاثية</div>
+        
+        <model-viewer 
+          id="tshirt-3d"
+          src="https://raw.githubusercontent.com/adrianhajdin/project_threejs_ai/main/client/public/shirt_baked.glb"
+          alt="FLOW Professional 3D T-Shirt"
+          shadow-intensity="1.5"
+          camera-controls
+          touch-action="pan-y"
+          camera-orbit="0deg 75deg 110%"
+          exposure="1.0"
+          environment-image="neutral"
+          class="tshirt-3d-model"
+          style="background-color: transparent;">
+        </model-viewer>
+
+        <!-- Hidden Canvas for Texture Generation -->
+        <canvas id="texture-canvas" width="1024" height="1024" style="display:none"></canvas>
+
+        <div class="tshirt-design-overlay" id="design-overlay" style="z-index:10; transform: translate(-50%, -150%);">
+          <div id="text-preview" class="design-text-preview" style="display:none;font-size:18px"></div>
+          <img id="img-preview" class="design-img-preview" src="" alt="" style="display:none"/>
+        </div>
+        <div class="canvas-controls">
+          <button class="view-toggle-btn active" onclick="setPreviewSide('front',this)">الأمامي</button>
+          <button class="view-toggle-btn" onclick="setPreviewSide('back',this)">الخلفي</button>
+          <button class="btn btn-outline-gold btn-sm" onclick="downloadDesign()" style="padding:.45rem 1rem;font-size:.8125rem;border-radius:var(--radius-pill)">
+            ⬇ تحميل التصميم
+          </button>
+        </div>
+        <!-- Print placement indicator -->
+        <div style="margin-top:1.25rem;padding:.75rem;background:var(--black-elevated);border-radius:8px;font-size:.8rem;color:var(--text-secondary);display:flex;align-items:center;gap:.5rem">
+          <span style="color:var(--gold-primary)">📍</span>
+          موضع الطباعة: الصدر - الجزء الأعلى
+        </div>
+      </div>
+
+      <!-- Summary -->
+      <div style="margin-top:1rem;padding:1.25rem;background:var(--black-card);border:1px solid var(--black-border);border-radius:var(--radius-card)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.875rem">
+          <span style="font-weight:600">ملخص الطلب</span>
+          <span class="badge badge-gold">مخصص</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.5rem;font-size:.875rem">
+          <div style="display:flex;justify-content:space-between;color:var(--text-secondary)">
+            <span>لون التيشيرت</span><span id="summary-color">أسود</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;color:var(--text-secondary)">
+            <span>المقاس</span><span id="summary-size">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;color:var(--text-secondary)">
+            <span>الكمية</span><span id="summary-qty">1</span>
+          </div>
+          <div class="divider-gold" style="margin:.5rem 0"></div>
+          <div style="display:flex;justify-content:space-between;font-weight:700">
+            <span>السعر الكلي</span>
+            <span class="font-en" id="summary-price" style="color:var(--gold-primary)">299 ج</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Design Panel -->
+    <div class="design-panel">
+
+      <!-- 1. Tshirt Color -->
+      <div class="panel-card open" id="panel-color">
+        <div class="panel-card-header" onclick="togglePanel('color')">
+          <div class="panel-icon">🎨</div>
+          <span class="panel-title">لون التيشيرت</span>
+          <span class="panel-chevron">›</span>
+        </div>
+        <div class="panel-body">
+          <div class="tshirt-colors" id="color-options">
+            <div class="tshirt-color-btn active" style="background:#0D0D0D;border-color:#333" data-color="#0D0D0D" data-name="أسود" onclick="selectTshirtColor(this)" title="أسود"><span class="color-name">أسود</span></div>
+            <div class="tshirt-color-btn" style="background:#FDFDFD;border-color:#ccc" data-color="#FDFDFD" data-name="أبيض" onclick="selectTshirtColor(this)" title="أبيض"><span class="color-name">أبيض</span></div>
+            <div class="tshirt-color-btn" style="background:#2E332E;border-color:#4a504a" data-color="#2E332E" data-name="زيتي" onclick="selectTshirtColor(this)" title="زيتي"><span class="color-name">زيتي</span></div>
+            <div class="tshirt-color-btn" style="background:#521111;border-color:#721111" data-color="#521111" data-name="نبيتي" onclick="selectTshirtColor(this)" title="نبيتي"><span class="color-name">نبيتي</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Upload Image -->
+      <div class="panel-card open" id="panel-image">
+        <div class="panel-card-header" onclick="togglePanel('image')">
+          <div class="panel-icon">🖼️</div>
+          <span class="panel-title">رفع صورة / شعار</span>
+          <span class="panel-chevron">›</span>
+        </div>
+        <div class="panel-body">
+          <div class="upload-zone" id="upload-zone" ondragover="handleDrag(event)" ondrop="handleDrop(event)">
+            <input type="file" accept="image/*" onchange="handleImageUpload(this)" id="img-input"/>
+            <div class="upload-icon">☁️</div>
+            <div class="upload-text">اسحب الصورة هنا أو اضغط للرفع</div>
+            <div class="upload-hint">PNG, JPG, SVG — حتى 5MB</div>
+          </div>
+          <div class="upload-preview" id="upload-preview">
+            <img id="uploaded-img" src="" alt="الصورة المرفوعة"/>
+            <div style="display:flex;gap:.5rem">
+              <button class="btn btn-outline-gold btn-sm" onclick="clearImage()">🗑️ حذف</button>
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('img-input').click()">🔄 تغيير</button>
+            </div>
+          </div>
+          <div style="margin-top:1rem;display:flex;flex-direction:column;gap:1rem">
+            <div>
+              <label class="input-label">الحجم</label>
+              <input type="range" class="price-slider" min="50" max="500" value="300" id="img-size-slider" oninput="userDesignSize=this.value; update3DTexture()" style="margin:0"/>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem">
+              <div>
+                <label class="input-label">يمين / يسار</label>
+                <input type="range" class="price-slider" min="0" max="1024" value="512" id="pos-x" oninput="userPosX=this.value; update3DTexture()"/>
+              </div>
+              <div>
+                <label class="input-label">فوق / تحت</label>
+                <input type="range" class="price-slider" min="0" max="1024" value="350" id="pos-y" oninput="userPosY=this.value; update3DTexture()"/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Text Editor -->
+      <div class="panel-card open" id="panel-text">
+        <div class="panel-card-header" onclick="togglePanel('text')">
+          <div class="panel-icon">✏️</div>
+          <span class="panel-title">إضافة نص</span>
+          <span class="panel-chevron">›</span>
+        </div>
+        <div class="panel-body">
+          <div class="text-editor-grid">
+            <div class="input-group">
+              <label class="input-label">النص</label>
+              <input type="text" class="input" id="text-input" placeholder="اكتب نصك هنا..." oninput="updateTextPreview()" maxlength="50"/>
+            </div>
+            <div class="input-group">
+              <label class="input-label">الخط</label>
+              <div class="font-family-select">
+                <button class="font-choice active" style="font-family:'Cairo'" onclick="selectFont('Cairo',this)">Cairo</button>
+                <button class="font-choice" style="font-family:'Inter'" onclick="selectFont('Inter',this)">Inter</button>
+                <button class="font-choice" style="font-style:italic;font-family:'Georgia'" onclick="selectFont('Georgia',this)">Serif</button>
+              </div>
+            </div>
+            <div class="input-group">
+              <label class="input-label">لون النص</label>
+              <div class="text-colors">
+                <div class="text-color-swatch active" style="background:#ffffff" onclick="selectTextColor('#ffffff',this)" title="أبيض"></div>
+                <div class="text-color-swatch" style="background:#000000;border:1px solid #333" onclick="selectTextColor('#000000',this)"></div>
+                <div class="text-color-swatch" style="background:#D4AF37" onclick="selectTextColor('#D4AF37',this)"></div>
+                <div class="text-color-swatch" style="background:#EF4444" onclick="selectTextColor('#EF4444',this)"></div>
+                <div class="text-color-swatch" style="background:#22C55E" onclick="selectTextColor('#22C55E',this)"></div>
+                <div class="text-color-swatch" style="background:#60A5FA" onclick="selectTextColor('#60A5FA',this)"></div>
+                <div class="text-color-swatch" style="background:#F97316" onclick="selectTextColor('#F97316',this)"></div>
+              </div>
+            </div>
+            <div class="input-group">
+              <label class="input-label">مكان الطباعة</label>
+              <div class="side-selector" style="display:flex;gap:.5rem">
+                <button class="btn btn-outline btn-sm side-toggle-btn active" onclick="setDesignSide('front',this)">الصدر (الأمامي)</button>
+                <button class="btn btn-outline btn-sm side-toggle-btn" onclick="setDesignSide('back',this)">الظهر (الخلفي)</button>
+              </div>
+            </div>
+            <div class="input-group">
+              <label class="input-label">حجم النص: <span id="font-size-label">18px</span></label>
+              <input type="range" class="text-size-slider price-slider" min="12" max="40" value="18" oninput="updateFontSize(this.value)"/>
+            </div>
+            <div class="input-group">
+              <label class="input-label">المحاذاة</label>
+              <div class="text-align-btns">
+                <button class="align-btn active" onclick="setAlign('center',this)">↔ وسط</button>
+                <button class="align-btn" onclick="setAlign('right',this)">← يمين</button>
+                <button class="align-btn" onclick="setAlign('left',this)">→ يسار</button>
+              </div>
+            </div>
+            <div class="input-group">
+              <label class="input-label">سمك الخط</label>
+              <div class="text-align-btns">
+                <button class="align-btn active" onclick="setFontWeight('700',this)">Bold</button>
+                <button class="align-btn" onclick="setFontWeight('500',this)">Medium</button>
+                <button class="align-btn" onclick="setFontWeight('400',this)">Regular</button>
+              </div>
+            </div>
+            <div class="input-group" style="margin-top:1rem">
+              <label class="input-label">تحريك النص</label>
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem">
+                <div>
+                  <label class="input-label" style="font-size:10px">يمين / يسار</label>
+                  <input type="range" class="price-slider" min="0" max="1024" value="512" oninput="userPosX=this.value; update3DTexture()"/>
+                </div>
+                <div>
+                  <label class="input-label" style="font-size:10px">فوق / تحت</label>
+                  <input type="range" class="price-slider" min="0" max="1024" value="350" oninput="userPosY=this.value; update3DTexture()"/>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Size + Qty -->
+      <div class="panel-card open" id="panel-size">
+        <div class="panel-card-header" onclick="togglePanel('size')">
+          <div class="panel-icon">📏</div>
+          <span class="panel-title">المقاس والكمية</span>
+          <span class="panel-chevron">›</span>
+        </div>
+        <div class="panel-body">
+          <label class="input-label" style="margin-bottom:.75rem;display:block">اختر مقاسك <span id="selected-size-label" style="color:var(--gold-primary);margin-right:.5rem"></span></label>
+          <div class="size-grid-custom">
+            <button class="size-btn" onclick="selectCustomSize('XS',this)">XS</button>
+            <button class="size-btn" onclick="selectCustomSize('S',this)">S</button>
+            <button class="size-btn active" onclick="selectCustomSize('M',this)">M</button>
+            <button class="size-btn" onclick="selectCustomSize('L',this)">L</button>
+            <button class="size-btn" onclick="selectCustomSize('XL',this)">XL</button>
+            <button class="size-btn" onclick="selectCustomSize('XXL',this)">XXL</button>
+          </div>
+          <div style="margin-top:1.5rem">
+            <label class="input-label" style="margin-bottom:.75rem;display:block">الكمية</label>
+            <div class="order-controls">
+              <div class="qty-stepper">
+                <button onclick="changeOrderQty(-1)">−</button>
+                <span class="val font-en" id="order-qty">1</span>
+                <button onclick="changeOrderQty(1)">+</button>
+              </div>
+              <div class="price-display">
+                <span id="total-price">299</span> <span style="font-size:1rem">ج</span>
+                <div class="per">للقطعة الواحدة: 299 ج</div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:1rem;padding:.875rem;background:var(--black-elevated);border-radius:8px;font-size:.8125rem;color:var(--text-secondary);display:flex;align-items:center;gap:.5rem">
+            <span style="color:var(--gold-primary)">💡</span>
+            عند طلب 3 قطع أو أكثر، تحصل على خصم 10%
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Notes & Order -->
+      <div class="panel-card open" id="panel-order">
+        <div class="panel-card-header" onclick="togglePanel('order')">
+          <div class="panel-icon">📦</div>
+          <span class="panel-title">ملاحظات وإرسال الطلب</span>
+          <span class="panel-chevron">›</span>
+        </div>
+        <div class="panel-body">
+          <div class="input-group" style="margin-bottom:1.25rem">
+            <label class="input-label" for="design-notes">تعليمات خاصة للتصميم <span style="color:var(--text-muted)">(اختياري)</span></label>
+            <textarea class="input" id="design-notes" rows="3" placeholder="مثال: أريد النص في الوسط بالضبط، الصورة بدون تعديل..."></textarea>
+          </div>
+          <div class="input-group" style="margin-bottom:1.5rem">
+            <label class="input-label" for="customer-whatsapp">رقم واتساب للتواصل *</label>
+            <input type="tel" class="input font-en" id="customer-whatsapp" placeholder="01xxxxxxxxx" dir="ltr"/>
+          </div>
+          <button class="btn btn-gold btn-lg" style="width:100%;justify-content:center;margin-bottom:.75rem" onclick="submitDesign()">
+            ✅ أرسل طلبي عبر واتساب
+          </button>
+          <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="addToCartCustom()">
+            🛒 أضف للسلة وادفع لاحقاً
+          </button>
+          <p style="text-align:center;color:var(--text-muted);font-size:.75rem;margin-top:.875rem">
+            سيتم التواصل معك خلال ساعة لتأكيد التصميم قبل الطباعة
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Cart Drawer -->
+<div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
+<div class="cart-drawer" id="cart-drawer">
+  <div class="cart-drawer-header">
+    <h3 style="font-weight:700">🛒 سلة التسوق</h3>
+    <button class="nav-icon-btn" onclick="closeCart()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  </div>
+  <div class="cart-drawer-body" id="cart-items-drawer">
+    <div style="text-align:center;padding:3rem;color:var(--text-muted)"><p>سلتك فارغة!</p></div>
+  </div>
+  <div class="cart-drawer-footer" id="cart-footer" style="display:none">
+    <a href="checkout.html" class="btn btn-gold" style="width:100%;justify-content:center">إتمام الطلب ←</a>
+  </div>
+</div>
+<div id="toast-container"></div>
+
+<script src="main.js"></script>
+<script>
+const BASE_PRICE = 299;
+let selectedTshirtColor = '#1A1A1A';
+let selectedTshirtColorName = 'أسود';
+let selectedCustomSize = 'M';
+let orderQty = 1;
+let userPosX = 512;
+let userPosY = 350;
+let userDesignSize = 300;
+let userText = "";
+let userImg = null;
+let userDesignSide = 'front'; // 'front' or 'back'
+let userTextColor = '#FFFFFF';
+let userFont = 'Cairo';
+let userFontWeight = 'bold';
+
+const modelViewer = document.getElementById('tshirt-3d');
+
+// --- 3D MATERIAL LOGIC ---
+async function apply3DColor(hex) {
+  if (!modelViewer.model) return;
+  const material = modelViewer.model.materials[0];
+  const rgb = hexToRgb(hex);
+  material.pbrMetallicRoughness.setBaseColorFactor([rgb.r/255, rgb.g/255, rgb.b/255, 1]);
+}
+
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : {r:0, g:0, b:0};
+}
+
+async function update3DTexture() {
+  if (!modelViewer.model) return;
+  const canvas = document.getElementById('texture-canvas');
+  const ctx = canvas.getContext('2d');
+  
+  // 1. CLEAR CANVAS (Transparent background)
+  // This prevents the "smear" because we're only sending the DESIGN, 
+  // and the T-shirt color comes from the material itself.
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  let renderX = parseInt(userPosX);
+  let renderY = parseInt(userPosY);
+
+  // Offset for Back side if needed
+  if (userDesignSide === 'back') {
+    renderX = (renderX > 512) ? renderX - 350 : renderX + 350; 
+  }
+
+  ctx.save();
+  ctx.translate(renderX, renderY);
+  
+  if (userImg) {
+    ctx.drawImage(userImg, -userDesignSize/2, -userDesignSize/2, userDesignSize, userDesignSize);
+  }
+  
+  if (userText) {
+    ctx.fillStyle = userTextColor;
+    ctx.font = `${userFontWeight} ${Math.round(userDesignSize/4)}px ${userFont}`;
+    ctx.textAlign = "center";
+    ctx.fillText(userText, 0, 0); // Normalized center
+  }
+  
+  ctx.restore();
+
+  try {
+    const texture = await modelViewer.createTexture(canvas.toDataURL('image/png', 1.0));
+    modelViewer.model.materials.forEach(mat => {
+      // SET REAL COLOR HERE directly on material
+      const rgb = hexToRgb(selectedTshirtColor);
+      mat.pbrMetallicRoughness.setBaseColorFactor([rgb.r/255, rgb.g/255, rgb.b/255, 1]);
+      
+      if (mat.pbrMetallicRoughness.baseColorTexture) {
+        mat.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+      }
+    });
+  } catch (err) {
+    console.error("3D Fix Error:", err);
+  }
+}
+
+// UI Handlers for Text Properties
+function selectFont(font, el) {
+  userFont = font;
+  document.querySelectorAll('.font-choice').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  update3DTexture();
+}
+
+function selectTextColor(color, el) {
+  userTextColor = color;
+  document.querySelectorAll('.text-color-swatch').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  update3DTexture();
+}
+
+function setFontWeight(weight, el) {
+  userFontWeight = weight === '700' ? 'bold' : weight === '500' ? '500' : 'normal';
+  document.querySelectorAll('.align-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  update3DTexture();
+}
+
+function setAlign(align, el) {
+  // Logic to handle canvas text alignment if needed
+  update3DTexture();
+}
+
+function updateFontSize(size) {
+  document.getElementById('font-size-label').textContent = size + 'px';
+  userDesignSize = size * 15; // Scaled for 3D texture
+  update3DTexture();
+}
+
+function setDesignSide(side, el) {
+  userDesignSide = side;
+  document.querySelectorAll('.side-toggle-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  // Auto-rotate 3D model to show the selected side
+  setPreviewSide(side, document.createElement('button')); 
+  update3DTexture();
+}
+
+// Function to apply colors directly for speed
+function apply3DColor(hex) {
+  if (!modelViewer.model) return;
+  const rgb = hexToRgb(hex);
+  modelViewer.model.materials.forEach(mat => {
+    mat.pbrMetallicRoughness.setBaseColorFactor([rgb.r/255, rgb.g/255, rgb.b/255, 1]);
+  });
+}
+
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : {r:255, g:255, b:255};
+}
+
+// --- UI EVENT HANDLERS ---
+function selectTshirtColor(el) {
+  document.querySelectorAll('.tshirt-color-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  selectedTshirtColor = el.dataset.color;
+  selectedTshirtColorName = el.dataset.name;
+  document.getElementById('summary-color').textContent = selectedTshirtColorName;
+  
+  // If design is active, update texture; else just change color
+  if (userText || userImg) {
+    update3DTexture();
+  } else {
+    apply3DColor(selectedTshirtColor);
+  }
+}
+
+function handleImageUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      userImg = img;
+      update3DTexture();
+      document.getElementById('upload-preview').classList.add('show');
+      document.getElementById('uploaded-img').src = e.target.result;
+    };
+    img.src = e.target.result;
+    UIController.showToast('✅ تم تحديث التصميم الـ 3D');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImage() {
+  userImg = null;
+  document.getElementById('img-input').value = '';
+  document.getElementById('upload-preview').classList.remove('show');
+  update3DTexture();
+  UIController.showToast('🗑️ تم حذف الصورة');
+}
+
+function updateTextPreview() {
+  userText = document.getElementById('text-input').value;
+  update3DTexture();
+}
+
+// Initial state once model loads
+modelViewer.addEventListener('load', () => {
+  apply3DColor(selectedTshirtColor);
+});
+
+// Reuse existing logic for simplicity
+function selectCustomSize(s, el) {
+  selectedCustomSize = s;
+  document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('summary-size').textContent = s;
+}
+
+function changeOrderQty(d) {
+  orderQty = Math.max(1, orderQty + d);
+  document.getElementById('order-qty').textContent = orderQty;
+  document.getElementById('summary-qty').textContent = orderQty;
+  const price = orderQty >= 3 ? Math.round(BASE_PRICE * 0.9) : BASE_PRICE;
+  document.getElementById('total-price').textContent = price * orderQty;
+}
+
+function submitDesign() {
+  // Save design to cart
+  addToCartCustom();
+  // Move to the advanced checkout where upload & invoice happen
+  window.location.href = 'checkout.html';
+}
+
+function addToCartCustom() {
+  const canvas = document.getElementById('texture-canvas');
+  // Use webp with low quality to save significant space in LocalStorage
+  const designThumb = canvas.toDataURL('image/webp', 0.3); 
+
+  const customProduct = {
+    id: 'CUSTOM-' + Date.now(),
+    name: `تيشيرت مخصص (${selectedTshirtColorName})`,
+    price: orderQty >= 3 ? Math.round(BASE_PRICE * 0.9) : BASE_PRICE,
+    image: designThumb, // Use the design summary as main image
+    color: selectedTshirtColorName,
+    size: selectedCustomSize,
+    qty: orderQty,
+    category: 'custom',
+    customData: {
+      color: selectedTshirtColorName,
+      size: selectedCustomSize,
+      posX: userPosX,
+      posY: userPosY,
+      designSize: userDesignSize,
+      text: userText,
+      hasImage: !!userImg,
+      side: userDesignSide
+    }
+  };
+  
+  // Use specialized add to skip product lookup from central DB
+  if (typeof cartService !== 'undefined') {
+    cartService.cart.push(customProduct);
+    cartService.persist();
+    UIController.showToast('✅ تمت الإضافة للسلة');
+    window.openCart();
+  }
+}
+
+function setPreviewSide(side, el) {
+  const orbits = {
+    'front': '0deg 75deg 110%',
+    'back': '180deg 75deg 110%'
+  };
+  modelViewer.cameraOrbit = orbits[side];
+  document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function downloadDesign() {
+  const canvas = document.getElementById('texture-canvas');
+  const link = document.createElement('a');
+  link.download = `FLOW-Custom-Tshirt-${selectedTshirtColorName}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  UIController.showToast('✅ جاري تحميل التصميم...');
+}
+
+function togglePanel(id) { document.getElementById('panel-'+id).classList.toggle('open'); }
+
+// --- Global UI Logic ---
+document.getElementById('hamburger')?.addEventListener('click', () => {
+  document.getElementById('mobile-menu').classList.toggle('open');
+});
+window.addEventListener('scroll', () => {
+  document.getElementById('site-header')?.classList.toggle('scrolled', window.scrollY > 30);
+});
+</script>
+</body>
+</html>

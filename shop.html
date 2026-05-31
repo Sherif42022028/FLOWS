@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>المتجر | FLOW</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --radius-pill: 50px; --radius-card: 20px; }
+    body { background-color: var(--black-bg); color: var(--text-primary); font-family: 'Cairo', sans-serif; }
+    
+    .page-hero {
+      background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80') center/cover;
+      padding: 6rem 0; text-align: center; margin-bottom: 3rem;
+    }
+
+    .shop-layout { display: grid; grid-template-columns: 280px 1fr; gap: 2.5rem; }
+    
+    /* Filters Sidebar */
+    .filters-sidebar {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 2rem; border-radius: 24px; position: sticky; top: 100px; height: fit-content;
+    }
+    .filter-group { margin-bottom: 2rem; }
+    .filter-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 1.25rem; color: var(--gold-light); text-transform: uppercase; letter-spacing: 1px; }
+    .filter-options { display: flex; flex-direction: column; gap: 0.6rem; }
+    
+    .filter-chip {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 1rem; border-radius: 12px; background: rgba(255,255,255,0.02);
+      border: 1px solid transparent; color: var(--text-secondary); cursor: pointer; transition: all 0.3s ease; text-align: right; width: 100%;
+    }
+    .filter-chip:hover, .filter-chip.active { background: rgba(212, 175, 55, 0.08); border-color: rgba(212, 175, 55, 0.3); color: var(--gold-primary); }
+    .chip-count { font-size: 0.75rem; opacity: 0.6; font-family: 'Inter', sans-serif; }
+
+    /* Price Range */
+    .price-slider { width: 100%; accent-color: var(--gold-primary); margin: 1rem 0; }
+    .price-labels { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); font-family: 'Inter', sans-serif; }
+
+    /* Size Grid */
+    .size-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+    .size-chip {
+      padding: 0.6rem; border-radius: 8px; border: 1px solid var(--black-border);
+      background: transparent; color: var(--text-secondary); cursor: pointer; text-align: center; font-family: 'Inter', sans-serif; font-size: 0.8rem;
+    }
+    .size-chip.active { background: var(--gold-primary); color: var(--black-bg); border-color: var(--gold-primary); }
+
+    /* Products Grid */
+    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2rem; }
+    
+    /* Mobile Filter Drawer Control */
+    .mobile-filter-toggle { display: none; position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 1000; }
+    .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 2000; opacity: 0; pointer-events: none; transition: 0.3s; }
+    .sidebar-overlay.active { opacity: 1; pointer-events: all; }
+
+    @media (max-width: 992px) {
+      .shop-layout { grid-template-columns: 1fr; }
+      .filters-sidebar {
+        position: fixed; bottom: 0; left: 0; right: 0; top: auto; height: auto; max-height: 80vh; z-index: 2001;
+        transform: translateY(100%); transition: 0.4s; border-radius: 30px 30px 0 0; background: #0f0f0f;
+      }
+      .filters-sidebar.open { transform: translateY(0); }
+      .mobile-filter-toggle { display: flex; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header scrolled" id="site-header">
+  <nav class="nav-inner">
+    <a href="index.html" class="logo">FLOW</a>
+    <ul class="nav-links">
+      <li><a href="index.html">الرئيسية</a></li>
+      <li><a href="shop.html" class="active">المتجر</a></li>
+      <li><a href="custom-tshirt.html">تيشيرت مخصص</a></li>
+      <li><a href="downloads.html">تنزيل الفاتورة</a></li>
+    </ul>
+    <div class="nav-actions">
+      <button class="nav-icon-btn" onclick="openAuthModal()" aria-label="الحساب" id="user-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      </button>
+      <button class="nav-icon-btn" onclick="openCart()" aria-label="السلة" id="cart-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <path d="M16 10a4 4 0 01-8 0" />
+        </svg>
+        <span class="cart-count" id="cart-count">0</span>
+      </button>
+      <button class="hamburger" id="hamburger" aria-label="القائمة">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+</header>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobile-menu">
+  <a href="index.html">الرئيسية</a>
+  <a href="shop.html" class="active">المتجر</a>
+  <a href="custom-tshirt.html">تيشيرت مخصص</a>
+  <a href="downloads.html">تنزيل الفاتورة</a>
+  <a href="checkout.html">إتمام الطلب</a>
+</div>
+
+<div class="page-hero">
+  <div class="container">
+    <h1 class="text-h1">متجر <span class="gradient-text">FLOW</span></h1>
+    <p>اكتشف الأناقة في كل قطعة</p>
+  </div>
+</div>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleFilters()"></div>
+<button class="btn btn-gold mobile-filter-toggle" onclick="toggleFilters()">🔍 تصفية المنتجات</button>
+
+<main class="container" style="padding-bottom:10rem">
+  <div class="shop-layout">
+    <aside class="filters-sidebar" id="filters-sidebar">
+      <div style="margin-bottom:1.5rem">
+        <label class="filter-title" for="search-input">البحث</label>
+        <div style="position:relative">
+          <input type="text" id="search-input" class="input" placeholder="ابحث باسم المنتج..." oninput="filterProducts()" style="width:100%; padding:0.8rem 1rem; border-radius:12px; border:1px solid var(--black-border); background:rgba(255,255,255,0.03); color:white; font-family:'Cairo',sans-serif;">
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;margin-bottom:1.5rem">
+        <h2 style="font-size:1.1rem">الفلاتر</h2>
+        <button class="btn btn-ghost btn-sm" onclick="clearFilters()">مسح</button>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-title">الفئات</div>
+        <div class="filter-options">
+          <button class="filter-chip active" data-cat="all" onclick="setCategory('all', this)">الكل</button>
+          <button class="filter-chip" data-cat="tshirts" onclick="setCategory('tshirts', this)">تيرشرتات</button>
+          <button class="filter-chip" data-cat="pants" onclick="setCategory('pants', this)">بناطيل</button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-title">السعر</div>
+        <input type="range" id="price-slider" class="price-slider" min="0" max="1000" value="1000" oninput="updatePriceFilter(this.value)">
+        <div class="price-labels"><span>0 ج</span> <span id="max-price-label">1000 ج</span></div>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-title">المقاس</div>
+        <div class="size-grid">
+          <button class="size-chip" onclick="toggleSize(this)">S</button>
+          <button class="size-chip active" onclick="toggleSize(this)">M</button>
+          <button class="size-chip" onclick="toggleSize(this)">L</button>
+          <button class="size-chip" onclick="toggleSize(this)">XL</button>
+        </div>
+      </div>
+    </aside>
+
+    <div id="shop-content">
+       <div id="result-count" style="margin-bottom:1.5rem; color:var(--text-muted)"></div>
+       <div class="products-grid" id="products-grid"></div>
+       <div id="no-results" style="display:none; text-align:center; padding:5rem 0;">لا يوجد نتائج تطابق بحثك</div>
+    </div>
+  </div>
+</main>
+
+<!-- ══ CART DRAWER ═══════════════════════════════════════════ -->
+<div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
+<div class="cart-drawer" id="cart-drawer">
+  <div class="cart-drawer-header">
+    <h3 style="font-weight:700;font-size:1.1rem">🛒 سلة التسوق</h3>
+    <button class="nav-icon-btn" onclick="closeCart()" aria-label="إغلاق">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </svg>
+    </button>
+  </div>
+  <div class="cart-drawer-body" id="cart-items">
+    <div style="text-align:center;padding:3rem 1rem;color:var(--text-muted)">
+      🛍️<br>سلتك فارغة
+    </div>
+  </div>
+  
+  <div class="coupon-wrap" id="coupon-area" style="display:none">
+    <div class="coupon-input-group">
+      <input type="text" id="coupon-input" placeholder="أدخل كود الخصم">
+      <button class="coupon-btn" onclick="applyCoupon()">تطبيق</button>
+    </div>
+  </div>
+
+  <div class="cart-drawer-footer" id="cart-footer" style="display:none">
+    <div style="display:flex;justify-content:space-between;font-size:.875rem;margin-bottom:0.5rem">
+      <span>المجموع</span>
+      <span id="cart-subtotal">0 ج</span>
+    </div>
+    
+    <div class="cart-discount-row" id="cart-discount-row">
+      <span>الخصم</span>
+      <span class="discount-val">- 0 ج</span>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;font-weight:700;font-size:1.1rem">
+      <span>الإجمالي</span>
+      <span id="cart-total" class="gradient-text">0 ج</span>
+    </div>
+    <a href="checkout.html" class="btn btn-gold" style="width:100%;justify-content:center;margin-top:1rem">إتمام الطلب ←</a>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<!-- ══ AUTH DRAWER ════════════════════════════════════════════ -->
+<div class="cart-overlay" id="auth-overlay" onclick="closeAuthModal()"></div>
+<div class="cart-drawer" id="auth-drawer">
+  <div class="cart-drawer-header">
+    <h3 style="font-weight:700;font-size:1.1rem" id="auth-title">تسجيل الدخول</h3>
+    <button class="nav-icon-btn" onclick="closeAuthModal()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </svg>
+    </button>
+  </div>
+  <div class="cart-drawer-body">
+    <div id="login-form">
+      <div class="input-group">
+        <label class="input-label">البريد الإلكتروني</label>
+        <input type="email" id="login-email" class="input" placeholder="name@example.com" style="width:100%">
+      </div>
+      <div class="input-group" style="margin-top:1rem">
+        <label class="input-label">كلمة المرور</label>
+        <input type="password" id="login-password" class="input" placeholder="••••••••" style="width:100%">
+      </div>
+      <button class="btn btn-gold" style="width:100%;margin-top:1.5rem" onclick="handleLogin()">دخول</button>
+      <p style="text-align:center;font-size:.875rem;margin-top:1.5rem;color:var(--text-muted)">
+        ليس لديك حساب؟ <span style="color:var(--gold-primary);cursor:pointer;font-weight:600" onclick="switchAuth('register')">إنشاء حساب</span>
+      </p>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="input-group">
+        <label class="input-label">الاسم الكامل</label>
+        <input type="text" id="reg-name" class="input" placeholder="أدخل اسمك" style="width:100%">
+      </div>
+      <div class="input-group" style="margin-top:1rem">
+        <label class="input-label">البريد الإلكتروني</label>
+        <input type="email" id="reg-email" class="input" placeholder="name@example.com" style="width:100%">
+      </div>
+      <div class="input-group" style="margin-top:1rem">
+        <label class="input-label">كلمة المرور</label>
+        <input type="password" id="reg-password" class="input" placeholder="••••••••" style="width:100%">
+      </div>
+      <button class="btn btn-gold" style="width:100%;margin-top:1.5rem" onclick="handleRegister()">إنشاء حساب</button>
+      <p style="text-align:center;font-size:.875rem;margin-top:1.5rem;color:var(--text-muted)">
+        لديك حساب بالفعل؟ <span style="color:var(--gold-primary);cursor:pointer;font-weight:600" onclick="switchAuth('login')">تسجيل دخول</span>
+      </p>
+    </div>
+    <div id="profile-state" style="display:none">
+      <div style="text-align:center;margin-bottom:2rem">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--black-elevated);margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem;border:1px solid var(--gold-primary)">👤</div>
+        <h4 id="user-display-name">مرحباً</h4>
+        <p style="font-size:.875rem;color:var(--text-muted)" id="user-display-email"></p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.75rem">
+        <a href="downloads.html" class="btn btn-outline" style="justify-content:flex-start">📄 فواتيري السابقة</a>
+        <button class="btn btn-ghost" style="justify-content:flex-start;color:#ef4444" onclick="handleLogout()">تسجيل الخروج</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="data.js"></script>
+<script src="main.js"></script>
+<script>
+let activeCategory = 'all';
+let maxPrice = 1000;
+let searchQuery = '';
+let activeSizes = [];
+
+function toggleFilters() {
+  document.getElementById('filters-sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('active');
+}
+
+function clearFilters() {
+  activeCategory = 'all'; maxPrice = 1000; searchQuery = ''; activeSizes = [];
+  document.getElementById('search-input').value = '';
+  document.getElementById('price-slider').value = 1000;
+  document.getElementById('max-price-label').textContent = '1000 ج';
+  renderProducts();
+}
+
+function getFiltered() {
+  if (typeof PRODUCTS_DATA === 'undefined') return [];
+  let list = [...PRODUCTS_DATA];
+  if (activeCategory !== 'all') list = list.filter(p => p.category === activeCategory);
+  list = list.filter(p => p.price <= maxPrice);
+  if (searchQuery) list = list.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  if (activeSizes.length) list = list.filter(p => p.sizes.some(s => activeSizes.includes(s)));
+  return list;
+}
+
+window.updateCardImage = (id, imageUrl, colorName, el, isSection = false, prefix = null) => {
+  let containerId = isSection ? `section-product-${id}` : `product-${id}`;
+  if (prefix === 'shop') containerId = `shop-product-${id}`;
+  
+  const container = document.getElementById(containerId);
+
+  if (container) {
+    const img = container.querySelector('.main-card-img');
+    if (img) img.src = imageUrl;
+    
+    container.querySelectorAll('.color-opt').forEach(opt => opt.classList.remove('active'));
+    el.classList.add('active');
+    
+    const cartBtn = container.querySelector('.overlay-btn, .btn-outline-gold');
+    if (cartBtn) {
+      cartBtn.setAttribute('onclick', `event.stopPropagation(); window.addToCartById(${id}, 'M', 1, '${colorName}')`);
+    }
+  }
+};
+
+function escapeHtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function renderProducts() {
+  const list = getFiltered();
+  const grid = document.getElementById('products-grid');
+  if(!grid) return;
+
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.cat === activeCategory));
+  document.querySelectorAll('.size-chip').forEach(s => s.classList.toggle('active', activeSizes.includes(s.textContent.trim())));
+  
+  const countEl = document.getElementById('result-count');
+  if (countEl) countEl.innerHTML = `عرض <strong>${list.length}</strong> منتج`;
+
+  if (!list.length) {
+    grid.innerHTML = '';
+    const noRes = document.getElementById('no-results');
+    if (noRes) noRes.style.display = 'block';
+    return;
+  }
+
+  const noRes = document.getElementById('no-results');
+  if (noRes) noRes.style.display = 'none';
+
+  try {
+    grid.innerHTML = list.map(p => {
+      const firstColor = (p.colors && p.colors[0]) ? p.colors[0] : { images: [], name: '—', code: '#000' };
+      const mainImg = (firstColor.images && firstColor.images.length) ? firstColor.images[0] : '';
+      const colorOpts = (p.colors || []).map((c, i) => `
+        <button class="color-opt ${i === 0 ? 'active' : ''}" 
+                style="background:${c.code}; width:16px; height:16px; border-radius:50%; border:1px solid rgba(255,255,255,0.1); cursor:pointer" 
+                onclick="event.stopPropagation(); window.updateCardImage(${p.id}, '${c.images ? c.images[0] : ''}', '${c.name}', this, false, 'shop')"></button>
+      `).join('');
+
+      return `
+        <div class="product-card anim-fade-up" id="shop-product-${p.id}" onclick="window.location='product-detail.html?id=${p.id}'">
+          <div class="product-card-img">
+            <img src="${mainImg}" alt="${escapeHtml(p.name)}" class="main-card-img" loading="lazy" onerror="this.src='https://dummyimage.com/400x500/111/eee&text=FLOW'">
+            ${p.badge ? `<span class="product-badge badge badge-gold">${escapeHtml(p.badge)}</span>` : ''}
+            <div class="product-card-overlay">
+              <button class="btn btn-gold btn-sm overlay-btn" onclick="event.stopPropagation(); if(window.addToCartById) addToCartById(${p.id}, 'M', 1, this.closest('.product-card').querySelector('.color-opt.active')?.getAttribute('data-name') || '${escapeHtml(firstColor.name)}')">+ سلة</button>
+            </div>
+          </div>
+          <div class="product-card-body">
+            <h3 style="margin-bottom:0.4rem">${escapeHtml(p.name)}</h3>
+            <div class="card-colors" style="display:flex; gap:0.4rem; margin-bottom:0.8rem">
+              ${colorOpts}
+            </div>
+            <div class="price" style="font-weight:700; color:var(--text-primary)">${p.price} ج</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error("Error rendering products:", err);
+    grid.innerHTML = '<p style="color:white; grid-column: 1/-1; text-align:center;">حدث خطأ أثناء عرض المنتجات. يرجى التحديث.</p>';
+  }
+}
+
+function setCategory(cat, el) { activeCategory = cat; renderProducts(); }
+function toggleSize(el) {
+  const s = el.textContent.trim();
+  const idx = activeSizes.indexOf(s);
+  if(idx > -1) activeSizes.splice(idx, 1); else activeSizes.push(s);
+  renderProducts();
+}
+function updatePriceFilter(v) {
+  maxPrice = parseInt(v);
+  document.getElementById('max-price-label').textContent = v + ' ج';
+  renderProducts();
+}
+function filterProducts() {
+  searchQuery = document.getElementById('search-input').value;
+  renderProducts();
+}
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="data.js"></script>
+  <script src="main.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      window.renderShop = () => {}; // Prevent conflict
+      renderProducts();
+    });
+    
+    // Existing functions (renderProducts, pickColor, etc.) 
+    // were already in the script block above.
+  </script>
+</body>
+</html>

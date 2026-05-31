@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>تنزيل الفاتورة — FLOW</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230A0A0A'/><text x='16' y='23' text-anchor='middle' font-family='sans-serif' font-weight='bold' font-size='18' fill='%23D4AF37'>F</text></svg>"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .invoice-wrap { padding: 6.5rem 0 5rem; }
+    .invoice-layout { display: grid; grid-template-columns: 1fr; gap: 1.25rem; max-width: 900px; margin: 0 auto; }
+    .invoice-card { background: var(--black-card); border: 1px solid var(--black-border); border-radius: var(--radius-card); padding: 1.5rem; }
+    .invoice-title { font-size: 1.25rem; font-weight: 800; margin-bottom: 0.4rem; }
+    .invoice-sub { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.7; }
+    .invoice-form { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: end; margin-top: 1.25rem; }
+    .invoice-form .input-group { flex: 1; min-width: 240px; }
+    .invoice-actions { display:flex; gap:.75rem; flex-wrap:wrap; margin-top: 1rem; }
+    .hint { font-size: .8125rem; color: var(--text-muted); margin-top: .75rem; }
+    .invoice-meta { display:grid; grid-template-columns: 1fr 1fr; gap: .75rem 1.25rem; margin-top: 1rem; }
+    .meta-item { display:flex; justify-content:space-between; gap:1rem; padding:.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .meta-item:last-child { border-bottom:none; }
+    .meta-k { color: var(--text-muted); }
+    .meta-v { font-weight: 600; }
+    .items-table { width:100%; border-collapse: collapse; margin-top: 1rem; overflow: hidden; border-radius: 12px; }
+    .items-table th { text-align:right; padding:.75rem 1rem; font-size:.75rem; letter-spacing:.06em; text-transform:uppercase; color: var(--text-muted); background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .items-table td { padding:.85rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); font-size:.9rem; }
+    .items-table tr:last-child td { border-bottom:none; }
+    .totals { margin-top: 1rem; display:flex; flex-direction:column; gap:.6rem; }
+    .total-row { display:flex; justify-content:space-between; color: var(--text-secondary); }
+    .total-row strong { color: var(--text-primary); font-weight: 800; }
+    .total-row.final { font-size: 1.05rem; }
+    .empty { text-align:center; padding: 2rem 1rem; color: var(--text-muted); }
+
+    @media (max-width: 720px) {
+      .invoice-meta { grid-template-columns: 1fr; }
+    }
+
+    @media print {
+      .site-header, .mobile-menu, .site-footer, #toast-container, .no-print { display: none !important; }
+      body { background: #fff !important; color: #000 !important; direction: rtl; }
+      .invoice-wrap { padding: 0 !important; }
+      .invoice-card { border: 1px solid #ddd !important; background: #fff !important; color: #000 !important; }
+      .meta-k { color: #444 !important; }
+      .invoice-sub, .total-row { color: #222 !important; }
+      .items-table th { background: #f4f4f4 !important; color: #222 !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header scrolled" id="site-header">
+  <nav class="nav-inner">
+    <a href="index.html" class="logo"><span>FLOW</span></a>
+    <ul class="nav-links">
+      <li><a href="index.html">الرئيسية</a></li>
+      <li><a href="shop.html">المتجر</a></li>
+      <li><a href="custom-tshirt.html">تيشيرت مخصص</a></li>
+      <li><a href="downloads.html" class="active">تنزيل الفاتورة</a></li>
+    </ul>
+    <div class="nav-actions">
+      <button class="nav-icon-btn" onclick="openAuthModal()" aria-label="الحساب" id="user-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      </button>
+      <button class="nav-icon-btn" onclick="openCart()" id="cart-btn" aria-label="السلة">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span class="cart-count" id="cart-count">0</span>
+      </button>
+      <button class="hamburger" id="hamburger" aria-label="القائمة"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+</header>
+<div class="mobile-menu" id="mobile-menu">
+  <a href="index.html" onclick="closeMobileMenu()">الرئيسية</a>
+  <a href="shop.html" onclick="closeMobileMenu()">المتجر</a>
+  <a href="custom-tshirt.html" onclick="closeMobileMenu()">تيشيرت مخصص</a>
+  <a href="downloads.html" onclick="closeMobileMenu()">تنزيل الفاتورة</a>
+  <a href="checkout.html" onclick="closeMobileMenu()">إتمام الطلب</a>
+</div>
+
+<main class="invoice-wrap">
+  <div class="container">
+    <div class="breadcrumb" style="justify-content:center;margin-bottom:1rem">
+      <a href="index.html">الرئيسية</a>
+      <span class="sep">/</span>
+      <span class="current">تنزيل الفاتورة</span>
+    </div>
+
+    <div class="invoice-layout">
+      <div class="invoice-card no-print">
+        <div class="invoice-title">تنزيل الفاتورة / إيصال الطلب</div>
+        <div class="invoice-sub">
+          أدخل رقم الطلب (مثل <span class="font-en">#KF-1234</span>) لعرض الإيصال ثم <strong>اطبع</strong> أو <strong>احفظ كـ PDF</strong>.
+        </div>
+
+        <div class="invoice-form">
+          <div class="input-group">
+            <label class="input-label" for="order-id">رقم الطلب</label>
+            <input class="input font-en" id="order-id" type="text" placeholder="#KF-1234" dir="ltr" autocomplete="off"/>
+          </div>
+          <button class="btn btn-gold" onclick="findOrder()" style="justify-content:center">بحث</button>
+          <button class="btn btn-ghost" onclick="fillLastOrder()" style="justify-content:center">آخر طلب</button>
+        </div>
+
+        <div class="hint">
+          ملاحظة: هذه النسخة تحفظ الطلبات محلياً في المتصفح فقط. إذا فتحت الصفحة من جهاز/متصفح مختلف فلن تظهر الطلبات القديمة.
+        </div>
+      </div>
+
+      <div class="invoice-card" id="result-card">
+        <div class="empty">لم يتم اختيار طلب بعد.</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Cart Drawer -->
+<div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
+<div class="cart-drawer" id="cart-drawer">
+  <div class="cart-drawer-header">
+    <h3 style="font-weight:700;font-size:1.1rem">🛒 سلة التسوق</h3>
+    <button class="nav-icon-btn" onclick="closeCart()" aria-label="إغلاق">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="cart-drawer-body" id="cart-items-drawer">
+    <div style="text-align:center;padding:3rem 1rem;color:var(--text-muted)"><p>سلتك فارغة!</p></div>
+  </div>
+  <div class="cart-drawer-footer" id="cart-footer" style="display:none">
+    <div style="display:flex;justify-content:space-between;font-size:.875rem;color:var(--text-secondary)">
+      <span>الإجمالي</span>
+      <span class="font-en" id="cart-total">0 ج</span>
+    </div>
+    <a href="checkout.html" class="btn btn-gold" style="width:100%;justify-content:center">إتمام الطلب ←</a>
+  </div>
+</div>
+<div id="toast-container"></div>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="logo">FLOW</div>
+        <p>متجر ملابس فاخر يقدم أرقى التصاميم العصرية من بناطيل وتيشيرتات بجودة لا تُضاهى.</p>
+      </div>
+      <div class="footer-col">
+        <h4>روابط سريعة</h4>
+        <a href="shop.html">المتجر</a>
+        <a href="custom-tshirt.html">تيشيرت مخصص</a>
+        <a href="downloads.html">تنزيل الفاتورة</a>
+      </div>
+      <div class="footer-col">
+        <h4>مساعدة</h4>
+        <a href="checkout.html">إتمام الطلب</a>
+        <a href="shop.html">تسوق الآن</a>
+      </div>
+      <div class="footer-col">
+        <h4>تواصل معنا</h4>
+        <a href="https://wa.me/201035269808" rel="noopener noreferrer" target="_blank">واتساب: 01035269808</a>
+        <a href="mailto:ashrafsherifmas@gmail.com">ashrafsherifmas@gmail.com</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 FLOW — جميع الحقوق محفوظة</p>
+      <p>صنع بـ ❤️ في مصر</p>
+    </div>
+  </div>
+</footer>
+
+<!-- ══ AUTH DRAWER ════════════════════════════════════════════ -->
+<div class="cart-overlay" id="auth-overlay" onclick="closeAuthModal()"></div>
+<div class="cart-drawer" id="auth-drawer">
+  <div class="cart-drawer-header">
+    <h3 style="font-weight:700;font-size:1.1rem" id="auth-title">تسجيل الدخول</h3>
+    <button class="nav-icon-btn" onclick="closeAuthModal()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </svg>
+    </button>
+  </div>
+  <div class="cart-drawer-body">
+    <div id="login-form">
+      <div class="input-group">
+        <label class="input-label">البريد الإلكتروني</label>
+        <input type="email" id="login-email" class="input" placeholder="name@example.com" style="width:100%">
+      </div>
+      <div class="input-group" style="margin-top:1rem">
+        <label class="input-label">كلمة المرور</label>
+        <input type="password" id="login-password" class="input" placeholder="••••••••" style="width:100%">
+      </div>
+      <button class="btn btn-gold" style="width:100%;margin-top:1.5rem" onclick="handleLogin()">دخول</button>
+      <p style="text-align:center;font-size:.875rem;margin-top:1.5rem;color:var(--text-muted)">
+        ليس لديك حساب؟ <span style="color:var(--gold-primary);cursor:pointer;font-weight:600" onclick="switchAuth('register')">إنشاء حساب</span>
+      </p>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="input-group">
+        <label class="input-label">الاسم الكامل</label>
+        <input type="text" id="reg-name" class="input" placeholder="أدخل اسمك" style="width:100%">
+      </div>
+      <div class="input-group" style="margin-top:1rem">
+        <label class="input-label">البريد الإلكتروني</label>
+        <input type="email" id="reg-email" class="input" placeholder="name@example.com" style="width:100%">
+      </div>
+      <div class="input-group" style="margin-top:1rem">
+        <label class="input-label">كلمة المرور</label>
+        <input type="password" id="reg-password" class="input" placeholder="••••••••" style="width:100%">
+      </div>
+      <button class="btn btn-gold" style="width:100%;margin-top:1.5rem" onclick="handleRegister()">إنشاء حساب</button>
+      <p style="text-align:center;font-size:.875rem;margin-top:1.5rem;color:var(--text-muted)">
+        لديك حساب بالفعل؟ <span style="color:var(--gold-primary);cursor:pointer;font-weight:600" onclick="switchAuth('login')">تسجيل دخول</span>
+      </p>
+    </div>
+    <div id="profile-state" style="display:none">
+      <div style="text-align:center;margin-bottom:2rem">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--black-elevated);margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem;border:1px solid var(--gold-primary)">👤</div>
+        <h4 id="user-display-name">مرحباً</h4>
+        <p style="font-size:.875rem;color:var(--text-muted)" id="user-display-email"></p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.75rem">
+        <a href="downloads.html" class="btn btn-outline" style="justify-content:flex-start">📄 فواتيري السابقة</a>
+        <button class="btn btn-ghost" style="justify-content:flex-start;color:#ef4444" onclick="handleLogout()">تسجيل الخروج</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="data.js"></script>
+<script src="main.js"></script>
+<script>
+function closeMobileMenu() {
+  const menu = document.getElementById('mobile-menu');
+  if (menu) menu.classList.remove('open');
+}
+
+document.getElementById('hamburger')?.addEventListener('click', () => {
+  document.getElementById('mobile-menu')?.classList.toggle('open');
+});
+window.addEventListener('scroll', () => document.getElementById('site-header')?.classList.toggle('scrolled', window.scrollY > 30));
+
+function loadOrders() {
+  try { return JSON.parse(localStorage.getItem('kimiflow_orders') || '[]'); } catch (e) { return []; }
+}
+
+function findOrderById(id) {
+  const orders = loadOrders();
+  return orders.find(o => String(o.id || '').trim() === id);
+}
+
+function normalizeId(s) {
+  const t = String(s || '').trim();
+  if (!t) return '';
+  return t.startsWith('#') ? t : ('#' + t);
+}
+
+function money(v) {
+  const n = Number(v) || 0;
+  return n.toLocaleString('ar-EG') + ' ج';
+}
+
+function fillLastOrder() {
+  const orders = loadOrders();
+  if (!orders.length) {
+    if (typeof UIController !== 'undefined') UIController.showToast('لا توجد طلبات محفوظة في هذا المتصفح', 'error');
+    return;
+  }
+  document.getElementById('order-id').value = orders[0].id || '';
+  findOrder();
+}
+
+function findOrder() {
+  const id = normalizeId(document.getElementById('order-id')?.value);
+  if (!id) {
+    if (typeof UIController !== 'undefined') UIController.showToast('أدخل رقم الطلب أولاً', 'error');
+    return;
+  }
+
+  const o = findOrderById(id);
+  if (!o) {
+    document.getElementById('result-card').innerHTML = `<div class="empty">لم يتم العثور على طلب بهذا الرقم في هذا المتصفح.</div>`;
+    return;
+  }
+  renderInvoice(o);
+}
+
+function renderInvoice(o) {
+  const items = Array.isArray(o.items) ? o.items : [];
+  const subtotal = Number(o.subtotal) || items.reduce((s,i)=>s + (Number(i.price)||0) * (Number(i.qty)||0), 0);
+  const shipping = Number(o.shipping) || 0;
+  const discount = Number(o.discount) || 0;
+  const total = Number(o.total) || Math.max(0, subtotal + shipping - discount);
+  const dateStr = o.date ? new Date(o.date).toLocaleString('ar-EG') : '—';
+
+  document.getElementById('result-card').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+      <div>
+        <div class="invoice-title">إيصال الطلب <span class="font-en">${o.id}</span></div>
+        <div class="invoice-sub">التاريخ: ${dateStr}</div>
+      </div>
+      <div class="invoice-actions no-print">
+        <button class="btn btn-outline-gold btn-sm" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
+        <a class="btn btn-ghost btn-sm" target="_blank" rel="noopener noreferrer" href="https://wa.me/201035269808?text=${encodeURIComponent('مرحباً، أريد نسخة من فاتورة الطلب ' + o.id)}">💬 واتساب</a>
+      </div>
+    </div>
+
+    <div class="invoice-meta">
+      <div class="meta-item"><span class="meta-k">العميل</span><span class="meta-v">${o.name || '—'}</span></div>
+      <div class="meta-item"><span class="meta-k">الهاتف</span><span class="meta-v font-en" dir="ltr">${o.phone || '—'}</span></div>
+      <div class="meta-item"><span class="meta-k">العنوان</span><span class="meta-v">${o.address || '—'}</span></div>
+      <div class="meta-item"><span class="meta-k">طريقة الدفع</span><span class="meta-v">${o.payment || 'واتساب'}</span></div>
+    </div>
+
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th>المنتج</th>
+          <th>المقاس</th>
+          <th>اللون</th>
+          <th class="font-en">الكمية</th>
+          <th class="font-en">السعر</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map(i => `
+          <tr>
+            <td>${(i.emoji ? (i.emoji + ' ') : '') + (i.name || '')}</td>
+            <td class="font-en">${i.size || '—'}</td>
+            <td>${i.color || '—'}</td>
+            <td class="font-en">${Number(i.qty) || 0}</td>
+            <td class="font-en">${money((Number(i.price)||0) * (Number(i.qty)||0))}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <div class="total-row"><span>إجمالي المنتجات</span><strong class="font-en">${money(subtotal)}</strong></div>
+      <div class="total-row"><span>الشحن</span><strong class="font-en">${money(shipping)}</strong></div>
+      ${discount ? `<div class="total-row"><span>خصم</span><strong class="font-en">- ${money(discount)}</strong></div>` : ''}
+      <div class="divider-gold"></div>
+      <div class="total-row final"><span>الإجمالي النهائي</span><strong class="font-en">${money(total)}</strong></div>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>
+

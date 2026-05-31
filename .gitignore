@@ -1,0 +1,12 @@
+# Local settings and temporary files
+.DS_Store
+Thumbs.db
+*.log
+
+# Project specific
+.gemini/
+brain/
+tmp/
+node_modules/
+dist/
+build/
